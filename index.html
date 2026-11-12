@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>playlistr // Cassette Mixtape DLL Simulator</title>
+
+  <!-- Google Fonts: Unbounded (Ultra-bold headlines), DM Sans (Body), Permanent Marker (Cassette Label), JetBrains Mono (Pointers) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@500;700&family=Permanent+Marker&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Main Pop-Art Mixtape Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- =====================================================================
+       1. HERO SECTION (YELLOW #FFF23A + DIAGONAL LIME STREAKS)
+       ===================================================================== -->
+  <header class="hero-section" id="heroSection">
+    <!-- Top Centered Logo -->
+    <div class="hero-brand">
+      <svg class="brand-mini-cassette" viewBox="0 0 44 28" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="41" height="25" rx="4" fill="#000" stroke="#000" stroke-width="2"/>
+        <rect x="6" y="5" width="32" height="10" rx="1.5" fill="#FFF23A"/>
+        <circle cx="15" cy="10" r="2.8" fill="#000"/>
+        <circle cx="29" cy="10" r="2.8" fill="#000"/>
+        <polygon points="10,26.5 13,20 31,20 34,26.5" fill="#FFF23A"/>
+        <circle cx="16" cy="23.5" r="1.2" fill="#000"/>
+        <circle cx="28" cy="23.5" r="1.2" fill="#000"/>
+      </svg>
+      <span class="brand-name">playlistr</span>
+    </div>
+
+    <!-- Top-Right Rotating Circular Text Badge -->
+    <div class="rotating-badge" aria-hidden="true" title="Doubly Linked Mixtape Engine">
+      <svg viewBox="0 0 120 120" class="rotating-badge-svg">
+        <defs>
+          <path id="badgeCirclePath" d="M 60, 60 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
+        </defs>
+        <circle cx="60" cy="60" r="56" fill="#000" />
+        <text class="badge-circle-text">
+          <textPath href="#badgeCirclePath" startOffset="0%">
+            MIXTAPE • DLL QUEUE • HIT PLAY • 
+          </textPath>
+        </text>
+        <polygon points="60,38 64,53 79,53 67,62 71,77 60,68 49,77 53,62 41,53 56,53" fill="#FFF23A"/>
+      </svg>
+    </div>
+
+    <div class="section-inner hero-inner">
+      <!-- Floating Hero Cassette Mount (Rendered dynamically with current song title & spool spin) -->
+      <div class="hero-cassette-stage">
+        <div class="hero-cassette-float" id="heroCassetteMount">
+          <!-- Inline SVG Cassette injected by script.js -->
+        </div>
+      </div>
+
+      <h1 class="hero-headline">MAKE YOUR PLAYLIST POP</h1>
+      <p class="hero-lead">
+        A hand-written Doubly Linked List mixtape queue. Spin tracks, swap node links, and loop endlessly with Circular Repeat All.
+      </p>
+
+      <div class="hero-cta-row">
+        <a href="#playerSection" class="btn-pill btn-black btn-lg" id="btnGetStarted">
+          <span>Get started</span>
+          <i data-lucide="arrow-down" style="width:18px; height:18px;"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Skewed Hard-Edge Divider -->
+    <div class="section-skew-divider to-violet" aria-hidden="true"></div>
+  </header>
+
+  <!-- =====================================================================
+       2. PLAYER SECTION (VIOLET #5B2EFF BACKGROUND)
+       ===================================================================== -->
+  <main class="player-section" id="playerSection">
+    <div class="section-inner">
+
+      <!-- Section Header with Hand-Drawn Style Cassette Icon -->
+      <div class="section-header-center reveal-on-scroll">
+        <svg class="doodle-cassette-icon" viewBox="0 0 84 64" aria-hidden="true">
+          <path d="M12 18 L72 12 C76 12 78 15 78 19 L74 52 C74 55 71 57 67 57 L15 58 C11 58 8 55 9 51 L10 22 C10 19 11 18 12 18 Z" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M17 24 L68 20 L66 39 L16 42 Z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+          <circle cx="31" cy="31" r="4.5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+          <circle cx="53" cy="30" r="4.5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+          <path d="M24 57 L27 48 L57 47 L60 56" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M40 15 L44 6 M44 6 L49 8 M44 6 L39 4" fill="none" stroke="#00F58A" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <h2 class="section-title-white">YOUR QUEUE IN ACTION</h2>
+        <p class="section-subtitle-white">
+          Every track is a live <code>SongNode</code> wired with <code>prev</code> and <code>next</code> pointers. Zero arrays used for queue storage.
+        </p>
+
+        <!-- Compact Pop-Art Telemetry Pills -->
+        <div class="telemetry-strip" aria-label="Playlist Live Stats">
+          <div class="telemetry-pill">
+            <span class="telemetry-label">TOTAL TRACKS</span>
+            <strong class="telemetry-val" id="statTotalTracks">0</strong>
+          </div>
+          <div class="telemetry-pill">
+            <span class="telemetry-label">NOW PLAYING</span>
+            <strong class="telemetry-val" id="statNowPlaying">IDLE</strong>
+            <span class="telemetry-sub" id="statCurrentAddress">Pointer: null</span>
+          </div>
+          <div class="telemetry-pill">
+            <span class="telemetry-label">MODE</span>
+            <strong class="telemetry-val" id="statMode">LINEAR</strong>
+            <span class="telemetry-sub" id="statModeSub">tail.next &rarr; NULL</span>
+          </div>
+          <div class="telemetry-pill">
+            <span class="telemetry-label">DURATION</span>
+            <strong class="telemetry-val" id="statTotalDuration">00:00</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- THREE STACKED LARGE ROUNDED FEATURE CARDS -->
+      <div class="feature-cards-stack">
+
+        <!-- CARD A: YELLOW WITH LIME STREAKS = ADD A SONG -->
+        <section class="pop-card pop-card-yellow reveal-on-scroll" id="addSongCard">
+          <div class="pop-card-grid">
+            <div class="pop-card-copy">
+              <span class="step-label">STEP 1</span>
+              <h3 class="pop-card-title">ADD A SONG</h3>
+              <p class="pop-card-desc">
+                Drop a local MP3/MP4/M4A file (duration auto-detects!) or type your track details. Insert at Head <b>O(1)</b>, Tail <b>O(1)</b>, or any Index <b>O(n)</b>.
+              </p>
+              <div class="step-chips">
+                <span class="mini-chip">addAtHead() O(1)</span>
+                <span class="mini-chip">addSong() O(1)</span>
+                <span class="mini-chip">addAtPosition() O(n)</span>
+              </div>
+            </div>
+
+            <div class="pop-card-content">
+              <form id="addSongForm" class="retro-form">
+                <!-- Local Media File Picker (Optional for quick viva typing, required for real audio) -->
+                <div class="file-drop-retro">
+                  <input type="file" id="inputFile" accept=".mp3,.mp4,.m4a,audio/*,video/*">
+                  <div class="file-drop-inner">
+                    <i data-lucide="disc-3" style="width:22px; height:22px;"></i>
+                    <div>
+                      <strong>Pick local audio / video file (optional)</strong>
+                      <div class="file-name-preview" id="fileNamePreview">Or type title, artist &amp; duration below</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="retro-form-grid">
+                  <div class="retro-field">
+                    <label for="inputTitle">Track Title *</label>
+                    <input type="text" id="inputTitle" class="retro-input" placeholder="e.g. Summer Breeze" required>
+                  </div>
+
+                  <div class="retro-field">
+                    <label for="inputArtist">Artist *</label>
+                    <input type="text" id="inputArtist" class="retro-input" placeholder="e.g. Neon Tape" required>
+                  </div>
+
+                  <div class="retro-field">
+                    <label for="inputDuration">Duration (sec) *</label>
+                    <input type="number" id="inputDuration" class="retro-input" placeholder="180" min="1" value="180" required>
+                  </div>
+
+                  <div class="retro-field">
+                    <label for="selectPosition">Position *</label>
+                    <select id="selectPosition" class="retro-input">
+                      <option value="tail">End (Tail) - O(1)</option>
+                      <option value="head">Start (Head) - O(1)</option>
+                      <option value="index">Specific Index - O(n)</option>
+                    </select>
+                  </div>
+
+                  <div class="retro-field full-span" id="indexGroup" style="display:none;">
+                    <label for="inputIndex">Insert Index (0 to <span id="maxIndexLabel">0</span>)</label>
+                    <input type="number" id="inputIndex" class="retro-input" placeholder="0" min="0" value="0">
+                  </div>
+                </div>
+
+                <button type="submit" class="btn-pill btn-black btn-block">
+                  <i data-lucide="plus" style="width:18px; height:18px;"></i>
+                  <span>Add</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- CARD B: NEON-GREEN WITH CYAN STARBURSTS = NOW PLAYING -->
+        <section class="pop-card pop-card-green reveal-on-scroll" id="nowPlayingCard">
+          <!-- Cyan Starburst SVG Background Pattern -->
+          <svg class="starburst-bg" viewBox="0 0 800 480" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points="400,240 460,40 500,190 680,60 550,220 790,230 570,290 740,440 500,340 440,470 390,330 220,460 310,300 40,340 270,230 90,70 340,180" fill="#3DF2D8" opacity="0.55"/>
+            <polygon points="150,80 185,20 205,85 275,65 215,115 265,175 190,145 145,205 155,135 80,140 135,95" fill="#3DF2D8" opacity="0.45"/>
+          </svg>
+
+          <div class="pop-card-grid">
+            <div class="pop-card-copy">
+              <span class="step-label">STEP 2</span>
+              <h3 class="pop-card-title">NOW PLAYING</h3>
+              <span class="status-sticker" id="playerStatusBadge">STATUS: EMPTY</span>
+
+              <div class="now-playing-meta">
+                <h4 class="player-title-big" id="playerTitle">No Track Selected</h4>
+                <p class="player-artist-sub" id="playerArtist">Queue is empty — add a tape!</p>
+
+                <div class="pointer-pills-row">
+                  <span class="pointer-pill" id="playerPrevBadge">prev: <b>null</b></span>
+                  <span class="pointer-pill" id="playerNextBadge">next: <b>null</b></span>
+                </div>
+
+                <p class="playback-status-line" id="playbackLogText">
+                  Ready for pointer playback.
+                </p>
+              </div>
+            </div>
+
+            <div class="pop-card-content player-deck-wrap">
+              <!-- Large Current Cassette Illustration -->
+              <div class="now-playing-cassette-stage" id="playerArtwork">
+                <div id="nowPlayingCassetteMount" class="now-playing-cassette-mount">
+                  <!-- Large inline SVG cassette injected by script.js -->
+                </div>
+              </div>
+
+              <!-- Progress Bar Scrubber -->
+              <div class="retro-progress-wrap">
+                <div class="progress-bar-track" id="progressBarWrap" title="Click to seek track">
+                  <div class="progress-fill-bar" id="progressFill"></div>
+                </div>
+                <div class="progress-time-row">
+                  <span id="timeElapsed">00:00</span>
+                  <span id="timeTotal">00:00</span>
+                </div>
+              </div>
+
+              <!-- Chunky Control Buttons -->
+              <div class="retro-controls-row">
+                <button id="btnPrev" class="btn-pill btn-black" title="Previous Track (current = current.prev)">
+                  <i data-lucide="skip-back" style="width:16px; height:16px;"></i>
+                  <span>Prev</span>
+                </button>
+
+                <button id="btnPlayPause" class="btn-pill btn-black btn-play-hero" title="Play / Pause">
+                  <i data-lucide="play" id="playPauseIcon" style="width:18px; height:18px;"></i>
+                  <span id="playPauseLabel">Play</span>
+                </button>
+
+                <button id="btnNext" class="btn-pill btn-black" title="Next Track (current = current.next)">
+                  <span>Next</span>
+                  <i data-lucide="skip-forward" style="width:16px; height:16px;"></i>
+                </button>
+
+                <button id="btnRepeat" class="btn-pill btn-lime-outline" title="Toggle Repeat All (Circular DLL Mode)">
+                  <i data-lucide="repeat" style="width:16px; height:16px;"></i>
+                  <span>Repeat All</span>
+                </button>
+
+                <button id="btnShuffle" class="btn-pill btn-lime-outline" title="Shuffle (Fisher-Yates Pointer Relinking)">
+                  <i data-lucide="shuffle" style="width:16px; height:16px;"></i>
+                  <span>Shuffle</span>
+                </button>
+
+                <button id="btnReverse" class="btn-pill btn-lime-outline" title="Reverse Queue (In-Place Pointer Swap O(n))">
+                  <i data-lucide="arrow-left-right" style="width:16px; height:16px;"></i>
+                  <span>Reverse</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CARD C: PINK WITH WHITE DIAGONAL SHARDS = VISUALIZE THE LIST -->
+        <section class="pop-card pop-card-pink reveal-on-scroll" id="visualizerCard">
+          <!-- White Diagonal Shards SVG Pattern -->
+          <svg class="shards-bg" viewBox="0 0 800 460" preserveAspectRatio="none" aria-hidden="true">
+            <polygon points="0,380 280,190 130,460" fill="#FFFFFF" opacity="0.45"/>
+            <polygon points="340,0 590,120 430,220" fill="#FFFFFF" opacity="0.4"/>
+            <polygon points="560,460 800,150 800,370" fill="#FFFFFF" opacity="0.45"/>
+            <polygon points="180,0 320,80 120,160" fill="#FFFFFF" opacity="0.3"/>
+          </svg>
+
+          <div class="pop-card-grid pop-card-grid-viz">
+            <div class="pop-card-copy">
+              <span class="step-label">STEP 3</span>
+              <h3 class="pop-card-title">VISUALIZE THE LIST</h3>
+              <p class="pop-card-desc">
+                Inspect live <code>SongNode</code> cassette blocks, <code>&lt;&rarr;</code> bidirectional pointers, and <b>CIRCULAR</b> wraparound links. Click any cassette to inspect memory!
+              </p>
+
+              <div class="viz-topology-pill" id="visualizerTopologyText">
+                LINEAR DOUBLY LINKED LIST (head.prev = null, tail.next = null)
+              </div>
+
+              <div class="viz-legend-pills">
+                <span class="legend-chip"><i class="dot dot-black"></i> prev / next (&lt;&rarr;)</span>
+                <span class="legend-chip"><i class="dot dot-green"></i> CIRCULAR Repeat All</span>
+              </div>
+
+              <button id="btnFocusActive" class="btn-pill btn-black btn-sm-pill" style="margin-top: 12px;">
+                <i data-lucide="crosshair" style="width:15px; height:15px;"></i>
+                <span>Center Active Tape</span>
+              </button>
+            </div>
+
+            <div class="pop-card-content viz-stage-shell">
+              <div class="visualizer-stage-wrap" id="visualizerStageWrap">
+                <!-- Circular Top SVG Curved Arrow (TAIL -> HEAD) -->
+                <div class="circular-arc-top" id="circularRailTop" aria-hidden="true">
+                  <svg class="circular-svg-arc" viewBox="0 0 600 54" preserveAspectRatio="none">
+                    <defs>
+                      <marker id="arrowGreenTop" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+                        <polygon points="0 0, 8 3.5, 0 7" fill="#00F58A" stroke="#000" stroke-width="1"/>
+                      </marker>
+                    </defs>
+                    <path d="M 555,50 C 555,8 45,8 45,46" fill="none" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M 555,50 C 555,8 45,8 45,46" fill="none" stroke="#00F58A" stroke-width="4.5" stroke-linecap="round" marker-end="url(#arrowGreenTop)"/>
+                  </svg>
+                  <span class="circular-pill-badge">CIRCULAR • tail.next &rarr; head</span>
+                </div>
+
+                <!-- Nodes Rail (Cassette Tapes + Sliding CURRENT sticker + <-> Arrows) -->
+                <div class="nodes-rail" id="nodesRail">
+                  <!-- Dynamically populated via script.js -->
+                </div>
+
+                <!-- Circular Bottom SVG Curved Arrow (HEAD -> TAIL) -->
+                <div class="circular-arc-bottom" id="circularRailBottom" aria-hidden="true">
+                  <svg class="circular-svg-arc" viewBox="0 0 600 54" preserveAspectRatio="none">
+                    <defs>
+                      <marker id="arrowGreenBottom" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+                        <polygon points="0 0, 8 3.5, 0 7" fill="#00F58A" stroke="#000" stroke-width="1"/>
+                      </marker>
+                    </defs>
+                    <path d="M 45,4 C 45,46 555,46 555,8" fill="none" stroke="#000" stroke-width="8" stroke-linecap="round"/>
+                    <path d="M 45,4 C 45,46 555,46 555,8" fill="none" stroke="#00F58A" stroke-width="4.5" stroke-linecap="round" marker-end="url(#arrowGreenBottom)"/>
+                  </svg>
+                  <span class="circular-pill-badge">CIRCULAR • head.prev &rarr; tail</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- Skewed Hard-Edge Divider -->
+    <div class="section-skew-divider to-charcoal" aria-hidden="true"></div>
+  </main>
+
+  <!-- =====================================================================
+       3. QUEUE SECTION (CHARCOAL #2E2E2E BACKGROUND)
+       ===================================================================== -->
+  <section class="queue-section" id="queueSection">
+    <div class="section-inner">
+      <div class="queue-section-header reveal-on-scroll">
+        <div>
+          <h2 class="section-title-white">YOUR TAPES</h2>
+          <p class="section-subtitle-white" id="searchMatchCount">
+            Traverse: Head &rarr; Tail (0 nodes)
+          </p>
+        </div>
+
+        <div class="queue-toolbar-retro">
+          <div class="search-retro-wrap">
+            <i data-lucide="search" style="width:16px; height:16px;"></i>
+            <input type="text" id="searchInput" class="retro-search-input" placeholder="Search title via O(n)...">
+          </div>
+          <span class="queue-count-pill" id="queueCountBadge">0 Tracks</span>
+          <button id="btnClearQueue" class="btn-pill btn-yellow btn-sm-pill">
+            Clear Queue &gt;
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Scrollable Pastel Carousel -->
+      <div class="tapes-carousel" id="queueList" role="list" aria-label="Playlist Queue Tapes">
+        <!-- Dynamically populated pastel cassette cards via script.js -->
+      </div>
+    </div>
+
+    <!-- Skewed Hard-Edge Divider -->
+    <div class="section-skew-divider to-violet-footer" aria-hidden="true"></div>
+  </section>
+
+  <!-- =====================================================================
+       4. FOOTER CTA & CHAT-BUBBLE OPERATION LOG (VIOLET #5B2EFF)
+       ===================================================================== -->
+  <footer class="footer-section" id="footerSection">
+    <div class="section-inner footer-grid">
+
+      <!-- Left CTA Column -->
+      <div class="footer-cta-col reveal-on-scroll">
+        <h2 class="footer-headline">HEY, KEEP THE MUSIC GOING</h2>
+        <p class="footer-subtext">
+          Every operation updates real <code>prev</code> and <code>next</code> pointers. Add more tapes, flip the list, or run the 32-test Viva suite.
+        </p>
+
+        <div class="footer-btn-wrap">
+          <a href="#addSongCard" class="btn-pill btn-yellow btn-lg" id="btnFooterAddSong">
+            <span>Add a song</span>
+          </a>
+
+          <!-- Hand-Drawn "TAP HERE" Arrow Label -->
+          <div class="tap-here-doodle" aria-hidden="true">
+            <svg viewBox="0 0 110 56" class="tap-here-arrow">
+              <path d="M 92,16 C 65,6 38,14 14,32" fill="none" stroke="#FFF23A" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="M 22,22 L 12,33 L 26,37" fill="none" stroke="#FFF23A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="tap-here-text">TAP HERE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Chat-Bubble Log Column -->
+      <div class="footer-log-col reveal-on-scroll">
+        <div class="log-cassette-header">
+          <div id="footerCassetteMount" class="footer-cassette-mount">
+            <!-- Small decorative cassette injected by script.js -->
+          </div>
+          <div class="log-header-actions">
+            <button id="btnRunTests" class="btn-pill btn-yellow btn-sm-pill" title="Execute Linked List Diagnostic Assertions">
+              <i data-lucide="activity" style="width:14px; height:14px;"></i>
+              <span>Run Tests</span>
+            </button>
+            <button id="btnClearLog" class="btn-pill btn-black btn-sm-pill">
+              <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+              <span>Clear</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="chat-log-bubbles" id="consoleWindow" aria-live="polite">
+          <!-- Speech-bubble pointer logs added in real time via script.js -->
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- =====================================================================
+       5. NODE INSPECTOR MODAL (VIVA MEMORY & POINTER DETAILS)
+       ===================================================================== -->
+  <div class="modal-overlay" id="inspectorModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 class="modal-title" id="inspectModalTitle">Node Pointer Analysis</h3>
+        <button class="modal-close" id="btnModalClose" aria-label="Close Inspector">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="inspector-grid" id="inspectGrid">
+        <!-- Dynamically rendered -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Real HTML5 Audio Player Engine -->
+  <audio id="realAudioPlayer" preload="auto"></audio>
+
+  <!-- JavaScript Modules (playlist.js & tests.js untouched!) -->
+  <script src="playlist.js"></script>
+  <script src="tests.js"></script>
+  <script src="script.js"></script>
+
+</body>
+</html>
