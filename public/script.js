@@ -67,6 +67,12 @@ function playTrackChangeSound(isNext = true) {
 // =========================================================================
 // HTML & SVG HELPERS
 // =========================================================================
+function refreshIcons() {
+  if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+    refreshIcons();
+  }
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -349,7 +355,7 @@ function updatePlayerCard() {
   }
 
   updateHeroAndFooterCassettes();
-  lucide.createIcons();
+  refreshIcons();
 }
 
 /** Lightweight updater for real-time progress bar */
@@ -467,7 +473,7 @@ function renderQueue(highlightQuery = '') {
     matchLabel.textContent = `Traverse: Head \u2192 Tail (${playlist.size} node${playlist.size === 1 ? '' : 's'})`;
   }
 
-  lucide.createIcons();
+  refreshIcons();
 }
 
 /** Position/Animate Sliding CURRENT Sticker inside Visualizer */
@@ -633,7 +639,7 @@ function renderVisualizer() {
   }
 
   positionCurrentSticker(true);
-  lucide.createIcons();
+  refreshIcons();
 }
 
 /** Full UI update helper */
@@ -687,8 +693,7 @@ function setupRealAudioEvents() {
     }
   });
 
-  realAudio.addEventListener('error', (e) => {
-    console.warn('RealAudio playback error:', e);
+  realAudio.addEventListener('error', () => {
     isPlaying = false;
     updatePlayerCard();
   });
@@ -710,8 +715,7 @@ function startPlayback() {
       playPromise.then(() => {
         isPlaying = true;
         updateAllUI();
-      }).catch(err => {
-        console.warn('Playback play request was prevented:', err);
+      }).catch(() => {
         isPlaying = false;
         updateAllUI();
       });
@@ -778,7 +782,7 @@ function handleNextTrack(auto = false) {
       realAudio.src = playlist.current.audioUrl;
       realAudio.currentTime = 0;
       if (isPlaying || auto) {
-        realAudio.play().catch(e => console.warn(e));
+        realAudio.play().catch(() => {});
       }
     } else if (isPlaying || auto) {
       startPlayback();
@@ -811,7 +815,7 @@ function handlePrevTrack() {
       realAudio.src = playlist.current.audioUrl;
       realAudio.currentTime = 0;
       if (isPlaying) {
-        realAudio.play().catch(e => console.warn(e));
+        realAudio.play().catch(() => {});
       }
     } else if (isPlaying) {
       startPlayback();
@@ -898,7 +902,8 @@ function handleDelete(index) {
 
     if (playlist.size === 0) {
       pausePlayback();
-      realAudio.src = '';
+      realAudio.removeAttribute('src');
+      realAudio.load();
       playbackSeconds = 0;
     } else if (isDeletedCurrent) {
       playbackSeconds = 0;
@@ -906,7 +911,7 @@ function handleDelete(index) {
         realAudio.src = playlist.current.audioUrl;
         realAudio.currentTime = 0;
         if (isPlaying) {
-          realAudio.play().catch(e => console.warn(e));
+          realAudio.play().catch(() => {});
         }
       }
     }
@@ -939,7 +944,8 @@ function handleClearQueue() {
 
   playlist.clear();
   pausePlayback();
-  realAudio.src = '';
+  realAudio.removeAttribute('src');
+  realAudio.load();
   playbackSeconds = 0;
   playSynthBeep(200, 'sawtooth', 0.3);
   logOperation('CLEAR', `clear(): Deallocated all node pointers. Size = 0.`, 'del');

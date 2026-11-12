@@ -39,9 +39,11 @@ function assert(condition, testName, details = '') {
 function runAllPlaylistTests() {
   testResults.length = 0;
 
-  console.log('\n======================================================');
-  console.log('   DATA STRUCTURES VIVA TEST SUITE: DOUBLY LINKED LIST');
-  console.log('======================================================\n');
+  if (isNode) {
+    console.log('\n======================================================');
+    console.log('   DATA STRUCTURES VIVA TEST SUITE: DOUBLY LINKED LIST');
+    console.log('======================================================\n');
+  }
 
   // TEST 1: Initial empty state
   const pl = new PlaylistClass();
@@ -182,11 +184,13 @@ function runAllPlaylistTests() {
   assert(pl.size === 0 && pl.head === null && pl.tail === null && pl.current === null,
     'removeSong (Last Remaining Node)', 'Playlist reset cleanly to empty state');
 
-  console.log('\n======================================================');
   const allPassed = testResults.every(r => r.passed);
-  console.log(`TOTAL TESTS: ${testResults.length} | PASSED: ${testResults.filter(r => r.passed).length} | FAILED: ${testResults.filter(r => !r.passed).length}`);
-  console.log(`OVERALL RESULT: ${allPassed ? 'ALL TESTS PASSED SUCCESSFULLY! ✓' : 'FAILURES DETECTED! ✗'}`);
-  console.log('======================================================\n');
+  if (isNode) {
+    console.log('\n======================================================');
+    console.log(`TOTAL TESTS: ${testResults.length} | PASSED: ${testResults.filter(r => r.passed).length} | FAILED: ${testResults.filter(r => !r.passed).length}`);
+    console.log(`OVERALL RESULT: ${allPassed ? 'ALL TESTS PASSED SUCCESSFULLY! ✓' : 'FAILURES DETECTED! ✗'}`);
+    console.log('======================================================\n');
+  }
 
   return {
     total: testResults.length,

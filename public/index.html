@@ -2,19 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>playlistr // Cassette Mixtape DLL Simulator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>playlistr // Music Playlist Simulator</title>
+  <meta name="description" content="Retro cassette mixtape Music Playlist Simulator powered by a hand-written Doubly Linked List with Circular Repeat All, live pointer visualization, and real audio playback.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 28'%3E%3Crect x='1.5' y='1.5' width='41' height='25' rx='4' fill='%23A97CFF' stroke='%23000' stroke-width='2'/%3E%3Crect x='6' y='5' width='32' height='10' rx='1.5' fill='%23FFF23A'/%3E%3Ccircle cx='15' cy='10' r='2.8' fill='%23000'/%3E%3Ccircle cx='29' cy='10' r='2.8' fill='%23000'/%3E%3Cpolygon points='10,26.5 13,20 31,20 34,26.5' fill='%23FFF23A'/%3E%3C/svg%3E">
 
   <!-- Google Fonts: Unbounded (Ultra-bold headlines), DM Sans (Body), Permanent Marker (Cassette Label), JetBrains Mono (Pointers) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=JetBrains+Mono:wght@500;700&family=Permanent+Marker&family=Unbounded:wght@700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Lucide Icons CDN -->
+  <!-- Lucide Icons CDN (HTTPS) -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <!-- Main Pop-Art Mixtape Stylesheet -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 
@@ -467,10 +469,10 @@
   <!-- Real HTML5 Audio Player Engine -->
   <audio id="realAudioPlayer" preload="auto"></audio>
 
-  <!-- JavaScript Modules (playlist.js & tests.js untouched!) -->
-  <script src="playlist.js"></script>
-  <script src="tests.js"></script>
-  <script src="script.js"></script>
+  <!-- JavaScript Modules -->
+  <script src="./playlist.js"></script>
+  <script src="./tests.js"></script>
+  <script src="./script.js"></script>
 
 </body>
 </html>
