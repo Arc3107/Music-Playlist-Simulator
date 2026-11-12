@@ -64,12 +64,22 @@ function playTrackChangeSound(isNext = true) {
   setTimeout(() => playSynthBeep(baseFreq * 1.25, 'sine', 0.14), 50);
 }
 
+// Persistence Key & Default Sample Mixtape Tracks
+const STORAGE_KEY = 'playlistr_dll_queue_v1';
+const DEFAULT_TRACKS = [
+  { title: 'Summer Breeze', artist: 'Neon Tape', duration: 194 },
+  { title: 'Midnight Cassette', artist: 'Synth Wave 84', duration: 218 },
+  { title: 'Neon Arcade', artist: 'Pixel Runner', duration: 175 },
+  { title: 'Cyber Funk', artist: 'Analog Soul', duration: 206 },
+  { title: 'Electric Sunset', artist: 'Chrome FM', duration: 230 }
+];
+
 // =========================================================================
 // HTML & SVG HELPERS
 // =========================================================================
 function refreshIcons() {
-  if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
-    refreshIcons();
+  if (typeof window !== 'undefined' && window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
   }
 }
 
@@ -170,6 +180,96 @@ function createCassetteSVG({
       <rect x="135" y="140" width="10" height="10" rx="2" fill="#000"/>
     </svg>
   `;
+}
+
+// =========================================================================
+// SAFE LOCALSTORAGE PERSISTENCE & DEFAULT SAMPLE TRACKS
+// =========================================================================
+function savePlaylistToStorage() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const nodes = playlist.toArray();
+    const payload = {
+      tracks: nodes.map(n => ({
+        title: n.title,
+        artist: n.artist,
+        duration: n.duration
+      })),
+      currentIndex: playlist.current ? playlist.indexOf(playlist.current) : 0,
+      isCircular: Boolean(playlist.isCircular)
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    // Graceful no-op when storage is unavailable or quota exceeded
+  }
+}
+
+function loadDefaultTracks() {
+  playlist.clear();
+  DEFAULT_TRACKS.forEach(track => playlist.addSong(track));
+  playlist.current = playlist.head;
+  savePlaylistToStorage();
+}
+
+function loadPlaylistFromStorage() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      loadDefaultTracks();
+      return;
+    }
+
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      loadDefaultTracks();
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    const tracks = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.tracks) ? parsed.tracks : null);
+
+    if (!tracks || tracks.length === 0) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      loadDefaultTracks();
+      return;
+    }
+
+    playlist.clear();
+    let validCount = 0;
+    tracks.forEach(item => {
+      if (item && typeof item.title === 'string' && item.title.trim()) {
+        playlist.addSong({
+          title: item.title,
+          artist: typeof item.artist === 'string' && item.artist.trim() ? item.artist : 'Mixtape Artist',
+          duration: Number(item.duration) > 0 ? Number(item.duration) : 180,
+          audioUrl: null
+        });
+        validCount++;
+      }
+    });
+
+    if (validCount === 0) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      loadDefaultTracks();
+      return;
+    }
+
+    const targetIdx = (parsed && typeof parsed.currentIndex === 'number') ? parsed.currentIndex : 0;
+    const targetNode = playlist.getNodeAt(Math.max(0, Math.min(playlist.size - 1, targetIdx)));
+    playlist.current = targetNode || playlist.head;
+
+    if (parsed && parsed.isCircular) {
+      playlist.enableRepeatAll();
+    }
+  } catch (e) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (innerErr) {
+      // Ignore storage clear errors
+    }
+    loadDefaultTracks();
+  }
 }
 
 // =========================================================================
@@ -648,6 +748,7 @@ function updateAllUI() {
   updatePlayerCard();
   renderQueue(document.getElementById('searchInput') ? document.getElementById('searchInput').value : '');
   renderVisualizer();
+  savePlaylistToStorage();
 }
 
 // =========================================================================
@@ -1059,13 +1160,34 @@ function handleRunDiagnostics() {
   }
 }
 
-// Scroll Reveal Observer for Smooth Card Entrance
+// Scroll Reveal Observer for Smooth Card Entrance (with visible-by-default fallback)
 function initScrollReveal() {
   const targets = document.querySelectorAll('.reveal-on-scroll');
-  if (!('IntersectionObserver' in window)) {
+  if (!targets || targets.length === 0) return;
+
+  const revealAll = () => {
     targets.forEach(el => el.classList.add('is-visible'));
+  };
+
+  if (typeof document !== 'undefined' && document.documentElement) {
+    document.documentElement.classList.add('js-enabled');
+  }
+
+  if (typeof IntersectionObserver !== 'function') {
+    revealAll();
     return;
   }
+
+  // Reveal any element already in or above the current viewport immediately
+  const vh = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 900;
+  targets.forEach(el => {
+    if (typeof el.getBoundingClientRect === 'function') {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < vh + 120) {
+        el.classList.add('is-visible');
+      }
+    }
+  });
 
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -1074,9 +1196,16 @@ function initScrollReveal() {
         observer.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.08 });
+  }, { threshold: 0.01, rootMargin: '0px 0px 80px 0px' });
 
-  targets.forEach(el => observer.observe(el));
+  targets.forEach(el => {
+    if (!el.classList.contains('is-visible')) {
+      observer.observe(el);
+    }
+  });
+
+  // Safety fallback: guarantee all sections reveal within 1.2s regardless of observer quirks
+  setTimeout(revealAll, 1200);
 }
 
 // Expose handlers globally for inline HTML event attributes
@@ -1089,81 +1218,93 @@ window.closeInspector = closeInspector;
 window.handleRunDiagnostics = handleRunDiagnostics;
 
 // =========================================================================
-// EVENT LISTENERS INITIALIZATION
+// EVENT LISTENERS & APP BOOTSTRAP
 // =========================================================================
-document.addEventListener('DOMContentLoaded', () => {
+let appInitialized = false;
+
+function initApp() {
+  if (appInitialized) return;
+  appInitialized = true;
+
   // 1. Setup scroll reveal animations
   initScrollReveal();
 
   // 2. Setup real HTML5 audio engine events
   setupRealAudioEvents();
 
-  // 3. Player Transport Controls
-  document.getElementById('btnPlayPause').addEventListener('click', togglePlayPause);
-  document.getElementById('btnNext').addEventListener('click', () => handleNextTrack(false));
-  document.getElementById('btnPrev').addEventListener('click', handlePrevTrack);
-  document.getElementById('btnRepeat').addEventListener('click', handleToggleRepeat);
-  document.getElementById('btnShuffle').addEventListener('click', handleShuffle);
-  document.getElementById('btnReverse').addEventListener('click', handleReverse);
-  document.getElementById('btnClearQueue').addEventListener('click', handleClearQueue);
+  // 3. Load persisted queue or default sample mixtape tracks
+  loadPlaylistFromStorage();
+
+  // 4. Player Transport Controls
+  const bindClick = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  };
+
+  bindClick('btnPlayPause', togglePlayPause);
+  bindClick('btnNext', () => handleNextTrack(false));
+  bindClick('btnPrev', handlePrevTrack);
+  bindClick('btnRepeat', handleToggleRepeat);
+  bindClick('btnShuffle', handleShuffle);
+  bindClick('btnReverse', handleReverse);
+  bindClick('btnClearQueue', handleClearQueue);
 
   // Focus active node in visualizer
-  document.getElementById('btnFocusActive').addEventListener('click', () => {
+  bindClick('btnFocusActive', () => {
     scrollActiveNodeIntoView();
     playSynthBeep(450, 'sine', 0.1);
   });
 
   // Footer CTA smooth scroll + focus input
-  const btnFooterAdd = document.getElementById('btnFooterAddSong');
-  if (btnFooterAdd) {
-    btnFooterAdd.addEventListener('click', () => {
-      setTimeout(() => {
-        const titleEl = document.getElementById('inputTitle');
-        if (titleEl) titleEl.focus();
-      }, 450);
-    });
-  }
+  bindClick('btnFooterAddSong', () => {
+    setTimeout(() => {
+      const titleEl = document.getElementById('inputTitle');
+      if (titleEl) titleEl.focus();
+    }, 450);
+  });
 
   // Clear Operation Log
-  document.getElementById('btnClearLog').addEventListener('click', () => {
-    document.getElementById('consoleWindow').innerHTML = '';
+  bindClick('btnClearLog', () => {
+    const consoleWin = document.getElementById('consoleWindow');
+    if (consoleWin) consoleWin.innerHTML = '';
     logOperation('CLEARED', 'Log history wiped.');
   });
 
   // Run Diagnostics button
-  const btnRunTests = document.getElementById('btnRunTests');
-  if (btnRunTests) {
-    btnRunTests.addEventListener('click', handleRunDiagnostics);
-  }
+  bindClick('btnRunTests', handleRunDiagnostics);
 
   // Interactive Progress Scrubber
   const progressBarWrap = document.getElementById('progressBarWrap');
-  progressBarWrap.addEventListener('click', (e) => {
-    if (!playlist.current) return;
-    const currentDuration = (realAudio && playlist.current.audioUrl && realAudio.duration)
-      ? realAudio.duration
-      : playlist.current.duration;
-    if (!currentDuration) return;
+  if (progressBarWrap) {
+    progressBarWrap.addEventListener('click', (e) => {
+      if (!playlist.current) return;
+      const currentDuration = (realAudio && playlist.current.audioUrl && realAudio.duration)
+        ? realAudio.duration
+        : playlist.current.duration;
+      if (!currentDuration) return;
 
-    const rect = progressBarWrap.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-    const targetSec = ratio * currentDuration;
+      const rect = progressBarWrap.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+      const targetSec = ratio * currentDuration;
 
-    if (playlist.current.audioUrl && realAudio) {
-      realAudio.currentTime = targetSec;
-    }
-    playbackSeconds = Math.floor(targetSec);
-    updatePlayerProgressOnly();
-    playSynthBeep(440, 'triangle', 0.08);
-  });
+      if (playlist.current.audioUrl && realAudio) {
+        realAudio.currentTime = targetSec;
+      }
+      playbackSeconds = Math.floor(targetSec);
+      updatePlayerProgressOnly();
+      playSynthBeep(440, 'triangle', 0.08);
+    });
+  }
 
   // Position Selector toggle
   const selectPosition = document.getElementById('selectPosition');
   const indexGroup = document.getElementById('indexGroup');
-  selectPosition.addEventListener('change', () => {
-    indexGroup.style.display = (selectPosition.value === 'index') ? 'flex' : 'none';
-  });
+  if (selectPosition && indexGroup) {
+    selectPosition.addEventListener('change', () => {
+      indexGroup.style.display = (selectPosition.value === 'index') ? 'flex' : 'none';
+    });
+  }
 
   // Local File Upload input listener: auto-detect duration and title
   const inputFile = document.getElementById('inputFile');
@@ -1171,104 +1312,112 @@ document.addEventListener('DOMContentLoaded', () => {
   const inputDuration = document.getElementById('inputDuration');
   const fileNamePreview = document.getElementById('fileNamePreview');
 
-  inputFile.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  if (inputFile && inputTitle && inputDuration && fileNamePreview) {
+    inputFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
-    currentMediaUrl = URL.createObjectURL(file);
+      currentMediaUrl = URL.createObjectURL(file);
 
-    if (!inputTitle.value.trim()) {
-      const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
-      inputTitle.value = cleanTitle;
-    }
+      if (!inputTitle.value.trim()) {
+        const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+        inputTitle.value = cleanTitle;
+      }
 
-    const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-    fileNamePreview.textContent = `${file.name} (${sizeMb} MB)`;
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      fileNamePreview.textContent = `${file.name} (${sizeMb} MB)`;
 
-    const isVideo = file.type.startsWith('video') || file.name.match(/\.(mp4|webm|ogg|mov)$/i);
-    const mediaProbe = document.createElement(isVideo ? 'video' : 'audio');
-    mediaProbe.preload = 'metadata';
-    mediaProbe.src = currentMediaUrl;
+      const isVideo = file.type.startsWith('video') || file.name.match(/\.(mp4|webm|ogg|mov)$/i);
+      const mediaProbe = document.createElement(isVideo ? 'video' : 'audio');
+      mediaProbe.preload = 'metadata';
+      mediaProbe.src = currentMediaUrl;
 
-    mediaProbe.onloadedmetadata = () => {
-      const durSec = Math.max(1, Math.round(mediaProbe.duration));
-      inputDuration.value = durSec;
-      logOperation('FILE:METADATA', `Loaded '${escapeHtml(file.name)}' [Duration: ${formatTime(durSec)} / ${durSec}s]`);
-    };
+      mediaProbe.onloadedmetadata = () => {
+        const durSec = Math.max(1, Math.round(mediaProbe.duration));
+        inputDuration.value = durSec;
+        logOperation('FILE:METADATA', `Loaded '${escapeHtml(file.name)}' [Duration: ${formatTime(durSec)} / ${durSec}s]`);
+      };
 
-    mediaProbe.onerror = () => {
-      if (!inputDuration.value) inputDuration.value = 180;
-    };
-  });
+      mediaProbe.onerror = () => {
+        if (!inputDuration.value) inputDuration.value = 180;
+      };
+    });
+  }
 
   // Add Song Form Submit (works with local file OR manual entry!)
   const addSongForm = document.getElementById('addSongForm');
-  addSongForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+  if (addSongForm && inputTitle && inputDuration && selectPosition) {
+    addSongForm.addEventListener('submit', (e) => {
+      e.preventDefault();
 
-    const title = inputTitle.value.trim();
-    const artist = document.getElementById('inputArtist').value.trim() || 'Mixtape Artist';
-    const duration = parseInt(inputDuration.value, 10) || 180;
-    const pos = selectPosition.value;
-    const idx = parseInt(document.getElementById('inputIndex').value, 10);
+      const title = inputTitle.value.trim();
+      const artistInput = document.getElementById('inputArtist');
+      const artist = (artistInput ? artistInput.value.trim() : '') || 'Mixtape Artist';
+      const duration = parseInt(inputDuration.value, 10) || 180;
+      const pos = selectPosition.value;
+      const indexInput = document.getElementById('inputIndex');
+      const idx = indexInput ? parseInt(indexInput.value, 10) : 0;
 
-    if (!title) {
-      alert('Please enter a track title.');
-      return;
-    }
-
-    const songData = {
-      title,
-      artist,
-      duration,
-      audioUrl: currentMediaUrl || null
-    };
-
-    let insertedNode = null;
-
-    if (pos === 'head') {
-      insertedNode = playlist.addAtHead(songData);
-      logOperation('INSERT:HEAD', `addAtHead(): Prepended '<b>${escapeHtml(title)}</b>' [${insertedNode.memAddress}] as new HEAD in O(1).`, 'ptr');
-    } else if (pos === 'index') {
-      insertedNode = playlist.addAtPosition(songData, idx);
-      if (!insertedNode) {
-        alert(`Invalid index! Must be between 0 and ${playlist.size}.`);
+      if (!title) {
+        alert('Please enter a track title.');
         return;
       }
-      logOperation('INSERT:POS', `addAtPosition(song, ${idx}): Spliced '<b>${escapeHtml(title)}</b>' [${insertedNode.memAddress}] in O(n).`, 'ptr');
-    } else {
-      insertedNode = playlist.addSong(songData);
-      logOperation('INSERT:TAIL', `addSong(): Appended '<b>${escapeHtml(title)}</b>' [${insertedNode.memAddress}] to TAIL in O(1).`, 'ptr');
-    }
 
-    if (playlist.size === 1) {
-      playlist.current = insertedNode;
-      if (insertedNode.audioUrl) {
-        realAudio.src = insertedNode.audioUrl;
-        realAudio.currentTime = 0;
+      const songData = {
+        title,
+        artist,
+        duration,
+        audioUrl: currentMediaUrl || null
+      };
+
+      let insertedNode = null;
+
+      if (pos === 'head') {
+        insertedNode = playlist.addAtHead(songData);
+        logOperation('INSERT:HEAD', `addAtHead(): Prepended '<b>${escapeHtml(title)}</b>' [${insertedNode.memAddress}] as new HEAD in O(1).`, 'ptr');
+      } else if (pos === 'index') {
+        insertedNode = playlist.addAtPosition(songData, idx);
+        if (!insertedNode) {
+          alert(`Invalid index! Must be between 0 and ${playlist.size}.`);
+          return;
+        }
+        logOperation('INSERT:POS', `addAtPosition(song, ${idx}): Spliced '<b>${escapeHtml(title)}</b>' [${insertedNode.memAddress}] in O(n).`, 'ptr');
+      } else {
+        insertedNode = playlist.addSong(songData);
+        logOperation('INSERT:TAIL', `addSong(): Appended '<b>${escapeHtml(title)}</b>' [${insertedNode.memAddress}] to TAIL in O(1).`, 'ptr');
       }
-    }
 
-    // Reset Form for next track
-    inputTitle.value = '';
-    document.getElementById('inputArtist').value = '';
-    inputDuration.value = '180';
-    inputFile.value = '';
-    fileNamePreview.textContent = 'Or type title, artist & duration below';
-    currentMediaUrl = null;
+      if (playlist.size === 1) {
+        playlist.current = insertedNode;
+        if (insertedNode.audioUrl) {
+          realAudio.src = insertedNode.audioUrl;
+          realAudio.currentTime = 0;
+        }
+      }
 
-    playSynthBeep(600, 'sine', 0.15);
-    updateAllUI();
-    scrollActiveNodeIntoView();
-  });
+      // Reset Form for next track
+      inputTitle.value = '';
+      if (artistInput) artistInput.value = '';
+      inputDuration.value = '180';
+      if (inputFile) inputFile.value = '';
+      if (fileNamePreview) fileNamePreview.textContent = 'Or type title, artist & duration below';
+      currentMediaUrl = null;
+
+      playSynthBeep(600, 'sine', 0.15);
+      updateAllUI();
+      scrollActiveNodeIntoView();
+    });
+  }
 
   // Real-time Search Input
   const searchInput = document.getElementById('searchInput');
-  searchInput.addEventListener('input', () => {
-    const query = searchInput.value;
-    renderQueue(query);
-    renderVisualizer();
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value;
+      renderQueue(query);
+      renderVisualizer();
+    });
+  }
 
   // Global Keyboard Shortcuts
   document.addEventListener('keydown', (e) => {
@@ -1296,16 +1445,25 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Modal Close
-  document.getElementById('btnModalClose').addEventListener('click', closeInspector);
-  document.getElementById('inspectorModal').addEventListener('click', (e) => {
-    if (e.target.id === 'inspectorModal') {
-      closeInspector();
-    }
-  });
+  bindClick('btnModalClose', closeInspector);
+  const inspectorModal = document.getElementById('inspectorModal');
+  if (inspectorModal) {
+    inspectorModal.addEventListener('click', (e) => {
+      if (e.target.id === 'inspectorModal') {
+        closeInspector();
+      }
+    });
+  }
 
   // Log Ready
-  logOperation('INIT', 'playlistr initialized. Doubly Linked List ready for mixtape tapes!');
+  logOperation('INIT', `playlistr ready with <b>${playlist.size}</b> tracks loaded into Doubly Linked List.`);
 
-  // Initial render
+  // Initial full render (Hero cassette, stats, Now Playing, Queue carousel, Visualizer)
   updateAllUI();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
